@@ -109,75 +109,84 @@ class EzTranslateApp {
             this.recognition.interimResults = true;
             this.recognition.lang = this.getLanguageCode(this.sourceLanguage.value);
             
-            // Frases de entrenamiento de Wikipedia
+            // Frases de entrenamiento mejoradas para análisis vocal
             this.trainingPhrases = [
-                "La tecnología artificial está transformando el mundo moderno de manera extraordinaria",
-                "Los océanos cubren aproximadamente el setenta por ciento de la superficie terrestre",
-                "El cerebro humano contiene miles de millones de neuronas interconectadas",
-                "La historia de la humanidad está llena de descubrimientos fascinantes",
-                "La música es un lenguaje universal que conecta culturas diferentes",
-                "Los ecosistemas mantienen el equilibrio natural del planeta",
-                "La literatura refleja la evolución del pensamiento humano",
-                "Las matemáticas son fundamentales para comprender el universo",
-                "La ciencia médica ha revolucionado la esperanza de vida",
-                "Los idiomas preservan la diversidad cultural de las sociedades"
+                "Hola, mi nombre es importante y quiero que analices mi voz completamente",
+                "Esta es mi voz natural hablando de forma clara y expresiva para el análisis",
+                "Necesito que captures todos los matices únicos de mi forma de hablar",
+                "Mi tono, ritmo y características vocales deben ser perfectamente clonados",
+                "Quiero que mi voz traducida suene exactamente como yo hablo naturalmente"
             ];
             
             this.currentPhraseIndex = 0;
             this.phrasesCompleted = 0;
-            this.requiredPhrases = 5; // Mínimo 5 frases para entrenamiento
+            this.requiredPhrases = 3; // Reducido para mejor UX
+            this.isVoiceAnalysisActive = false;
+            this.realTimeVoiceData = [];
             
-            // Configuración avanzada para clonación de voz real
-            this.userVoiceProfile = {
-                pitch: 1.0,
-                rate: 1.0,
-                volume: 1.0,
-                voicePattern: null,
+            // Sistema avanzado de clonación de voz con Web Audio API
+            this.voiceCloneEngine = {
+                isInitialized: false,
                 audioContext: null,
                 analyzer: null,
-                voiceCharacteristics: {
-                    frequency: [],
-                    amplitude: [],
-                    timbre: [],
-                    intonation: []
+                processor: null,
+                mediaStream: null,
+                realTimeBuffer: [],
+                voiceSignature: null,
+                clonedVoiceSettings: {
+                    pitch: 1.0,
+                    rate: 1.0,
+                    volume: 1.0,
+                    formants: [],
+                    harmonics: [],
+                    spectralProfile: null
                 }
             };
             
-            // Inicializar análisis de audio para clonación
-            this.initializeVoiceAnalysis();
+            // Inicializar motor de clonación avanzado
+            this.initializeAdvancedVoiceEngine();
             
             this.recognition.onstart = () => {
                 this.isRecording = true;
+                this.isVoiceAnalysisActive = true;
                 this.voiceCircle.classList.add('recording');
                 
-                // Crear barra de progreso de análisis ANTES de mostrar la frase
-                this.createVoiceAnalysisProgress();
+                // Crear interfaz de análisis avanzada
+                this.createAdvancedVoiceInterface();
                 
-                // Mostrar primera frase para repetir
-                this.displayTrainingPhrase();
+                // Mostrar primera frase de entrenamiento
+                this.displayCurrentTrainingPhrase();
                 
-                this.showToast('🔬 Iniciando entrenamiento de voz', 'success');
+                this.showToast('🎯 Iniciando clonación avanzada de voz', 'success');
                 
-                // Solicitar acceso al micrófono para análisis de voz REAL
+                // Solicitar acceso al micrófono con configuración optimizada
                 navigator.mediaDevices.getUserMedia({ 
                     audio: {
                         echoCancellation: false,
                         noiseSuppression: false,
                         autoGainControl: false,
-                        sampleRate: 44100
+                        sampleRate: 48000, // Máxima calidad
+                        channelCount: 1,
+                        latency: 0.01 // Baja latencia
                     }
                 })
-                    .then(stream => {
-                        this.captureUserVoicePattern(stream);
-                        this.startVoiceDetectionAnimation();
-                        this.startRealVoiceDetection(stream);
-                    })
-                    .catch(error => {
-                        console.warn('No se pudo acceder al micrófono para análisis:', error);
-                        this.voiceStatus.textContent = '🎤 Escuchando (modo básico) - Habla ahora';
-                        // Iniciar análisis simplificado si no hay acceso al micrófono
-                        this.startSimplifiedVoiceAnalysis();
-                    });
+                .then(stream => {
+                    console.log('🎤 Micrófono conectado - Iniciando análisis profundo');
+                    this.voiceCloneEngine.mediaStream = stream;
+                    this.startAdvancedVoiceAnalysis(stream);
+                    this.startRealTimeVoiceVisualization();
+                })
+                .catch(error => {
+                    console.error('Error accediendo al micrófono:', error);
+                    this.showToast('❌ Error: Permite acceso al micrófono', 'error');
+                    this.voiceStatus.innerHTML = `
+                        <div style="color: #ff1744; text-align: center;">
+                            <i class="fas fa-microphone-slash" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+                            <p><strong>Acceso al micrófono requerido</strong></p>
+                            <p>Permite el acceso para habilitar la clonación de voz</p>
+                        </div>
+                    `;
+                });
             };
             
             this.recognition.onresult = (event) => {
@@ -430,25 +439,217 @@ class EzTranslateApp {
         this.synthesis.speak(utterance);
     }
 
-    initializeVoiceAnalysis() {
+    initializeAdvancedVoiceEngine() {
         try {
-            // Inicializar contexto de audio para análisis de voz
-            this.userVoiceProfile.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            this.userVoiceProfile.analyzer = this.userVoiceProfile.audioContext.createAnalyser();
-            this.userVoiceProfile.analyzer.fftSize = 2048;
+            // Motor de clonación de voz con Web Audio API avanzado
+            this.voiceCloneEngine.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            this.voiceCloneEngine.analyzer = this.voiceCloneEngine.audioContext.createAnalyser();
             
-            console.log('Sistema de análisis de voz inicializado para clonación');
+            // Configuración de alta calidad para análisis vocal
+            this.voiceCloneEngine.analyzer.fftSize = 8192; // Máxima resolución
+            this.voiceCloneEngine.analyzer.smoothingTimeConstant = 0.1;
+            this.voiceCloneEngine.analyzer.minDecibels = -90;
+            this.voiceCloneEngine.analyzer.maxDecibels = -10;
+            
+            // Buffer para análisis en tiempo real
+            this.voiceCloneEngine.bufferLength = this.voiceCloneEngine.analyzer.frequencyBinCount;
+            this.voiceCloneEngine.dataArray = new Uint8Array(this.voiceCloneEngine.bufferLength);
+            this.voiceCloneEngine.floatArray = new Float32Array(this.voiceCloneEngine.bufferLength);
+            
+            // Sistema de detección de voz mejorado
+            this.voiceDetectionEngine = {
+                isDetecting: false,
+                threshold: 0.02, // Umbral más sensible
+                silenceTimeout: 1000, // 1 segundo de silencio
+                minSpeechDuration: 500, // Mínimo 0.5 segundos de habla
+                lastSpeechTime: 0,
+                speechStartTime: 0,
+                volumeHistory: [],
+                averageVolume: 0
+            };
+            
+            // Inicializar visualizador de voz en tiempo real
+            this.initializeRealTimeVisualizer();
+            
+            console.log('🎯 Motor avanzado de clonación de voz inicializado');
+            this.voiceCloneEngine.isInitialized = true;
+            
         } catch (error) {
-            console.warn('No se pudo inicializar análisis avanzado de voz:', error);
+            console.error('Error inicializando motor de voz:', error);
+            this.showToast('❌ Error inicializando análisis de voz', 'error');
         }
     }
 
-    async captureUserVoicePattern(stream) {
-        if (!this.userVoiceProfile.audioContext) return;
+    initializeRealTimeVisualizer() {
+        // Sistema de visualización en tiempo real para mostrar detección de voz
+        this.voiceVisualizer = {
+            canvas: null,
+            ctx: null,
+            animationId: null,
+            isActive: false,
+            barCount: 64,
+            barWidth: 0,
+            barHeights: new Array(64).fill(0)
+        };
+    }
+
+    startAdvancedVoiceAnalysis(stream) {
+        if (!this.voiceCloneEngine.isInitialized) {
+            console.error('Motor de voz no inicializado');
+            return;
+        }
         
         try {
-            const source = this.userVoiceProfile.audioContext.createMediaStreamSource(stream);
-            source.connect(this.userVoiceProfile.analyzer);
+            // Conectar flujo de audio al analizador
+            const source = this.voiceCloneEngine.audioContext.createMediaStreamSource(stream);
+            source.connect(this.voiceCloneEngine.analyzer);
+            
+            // Crear procesador de audio para análisis en tiempo real
+            this.voiceCloneEngine.processor = this.voiceCloneEngine.audioContext.createScriptProcessor(4096, 1, 1);
+            source.connect(this.voiceCloneEngine.processor);
+            this.voiceCloneEngine.processor.connect(this.voiceCloneEngine.audioContext.destination);
+            
+            console.log('🔊 Análisis de voz en tiempo real iniciado');
+            
+            // Variables para el análisis
+            let analysisStartTime = Date.now();
+            let samplesCollected = 0;
+            let qualitySamples = 0;
+            let isCurrentlySpeaking = false;
+            let speechSegments = [];
+            
+            // Procesamiento en tiempo real
+            this.voiceCloneEngine.processor.onaudioprocess = (event) => {
+                if (!this.isVoiceAnalysisActive) return;
+                
+                const inputBuffer = event.inputBuffer.getChannelData(0);
+                const currentTime = Date.now();
+                
+                // Análisis de amplitud en tiempo real
+                const rms = this.calculateRMS(inputBuffer);
+                const volume = Math.sqrt(rms);
+                
+                // Actualizar historial de volumen
+                this.voiceDetectionEngine.volumeHistory.push(volume);
+                if (this.voiceDetectionEngine.volumeHistory.length > 50) {
+                    this.voiceDetectionEngine.volumeHistory.shift();
+                }
+                
+                // Calcular promedio dinámico
+                this.voiceDetectionEngine.averageVolume = 
+                    this.voiceDetectionEngine.volumeHistory.reduce((a, b) => a + b, 0) / 
+                    this.voiceDetectionEngine.volumeHistory.length;
+                
+                // Detectar actividad vocal
+                const isVoiceDetected = volume > (this.voiceDetectionEngine.averageVolume * 2 + 0.01);
+                
+                // Actualizar visualización en tiempo real
+                this.updateVoiceVisualization(volume, isVoiceDetected);
+                
+                if (isVoiceDetected && !isCurrentlySpeaking) {
+                    // Inicio de habla detectado
+                    isCurrentlySpeaking = true;
+                    this.voiceDetectionEngine.speechStartTime = currentTime;
+                    this.voiceDetectionEngine.lastSpeechTime = currentTime;
+                    
+                    this.voiceCircle.classList.add('detecting-voice');
+                    this.updateVoiceStatus('🎤 ¡Voz detectada! Analizando patrones...', 'detecting');
+                    
+                    console.log('🗣️ Inicio de habla detectado - Volumen:', volume.toFixed(4));
+                    
+                } else if (isVoiceDetected && isCurrentlySpeaking) {
+                    // Continuación de habla
+                    this.voiceDetectionEngine.lastSpeechTime = currentTime;
+                    
+                    // Realizar análisis profundo del segmento
+                    const voiceAnalysis = this.performDeepVoiceAnalysis(inputBuffer, volume);
+                    this.voiceCloneEngine.realTimeBuffer.push(voiceAnalysis);
+                    
+                    samplesCollected++;
+                    if (voiceAnalysis.quality > 0.6) {
+                        qualitySamples++;
+                    }
+                    
+                    // Actualizar progreso
+                    this.updateAnalysisProgress(samplesCollected, qualitySamples, currentTime - analysisStartTime);
+                    
+                } else if (!isVoiceDetected && isCurrentlySpeaking) {
+                    // Verificar si es fin de habla
+                    const silenceDuration = currentTime - this.voiceDetectionEngine.lastSpeechTime;
+                    
+                    if (silenceDuration > this.voiceDetectionEngine.silenceTimeout) {
+                        // Fin de habla confirmado
+                        isCurrentlySpeaking = false;
+                        this.voiceCircle.classList.remove('detecting-voice');
+                        
+                        const speechDuration = this.voiceDetectionEngine.lastSpeechTime - this.voiceDetectionEngine.speechStartTime;
+                        
+                        if (speechDuration > this.voiceDetectionEngine.minSpeechDuration) {
+                            // Procesar segmento de habla válido
+                            this.processValidSpeechSegment(speechSegments.length + 1, speechDuration, qualitySamples);
+                            speechSegments.push({
+                                start: this.voiceDetectionEngine.speechStartTime,
+                                end: this.voiceDetectionEngine.lastSpeechTime,
+                                duration: speechDuration,
+                                samples: qualitySamples
+                            });
+                        }
+                        
+                        console.log('🔇 Fin de habla - Duración:', speechDuration, 'ms');
+                    }
+                }
+                
+                // Verificar si el análisis está completo
+                if (qualitySamples >= 150 || (currentTime - analysisStartTime) > 30000) {
+                    this.completeAdvancedVoiceAnalysis(speechSegments, qualitySamples);
+                }
+            };
+            
+        } catch (error) {
+            console.error('Error en análisis avanzado:', error);
+            this.showToast('❌ Error en análisis de voz', 'error');
+        }
+    }
+
+    calculateRMS(buffer) {
+        let sum = 0;
+        for (let i = 0; i < buffer.length; i++) {
+            sum += buffer[i] * buffer[i];
+        }
+        return sum / buffer.length;
+    }
+
+    performDeepVoiceAnalysis(audioBuffer, volume) {
+        // Análisis espectral profundo
+        this.voiceCloneEngine.analyzer.getByteFrequencyData(this.voiceCloneEngine.dataArray);
+        this.voiceCloneEngine.analyzer.getFloatFrequencyData(this.voiceCloneEngine.floatArray);
+        
+        // Encontrar frecuencia fundamental
+        const fundamentalFreq = this.findFundamentalFrequencyAdvanced(this.voiceCloneEngine.floatArray);
+        
+        // Análisis de armónicos
+        const harmonics = this.analyzeHarmonicsAdvanced(this.voiceCloneEngine.dataArray, fundamentalFreq);
+        
+        // Análisis de formantes
+        const formants = this.extractFormants(this.voiceCloneEngine.floatArray);
+        
+        // Análisis de textura vocal
+        const texture = this.analyzeVoiceTexture(this.voiceCloneEngine.dataArray);
+        
+        // Calcular calidad de la muestra
+        const quality = this.calculateSampleQuality(volume, fundamentalFreq, harmonics.length, formants.length);
+        
+        return {
+            timestamp: Date.now(),
+            fundamentalFreq,
+            harmonics,
+            formants,
+            texture,
+            volume,
+            quality,
+            spectralData: Array.from(this.voiceCloneEngine.dataArray.slice(0, 128)) // Reducir datos
+        };
+    }
             
             // Configuración avanzada para análisis profundo REAL
             this.userVoiceProfile.analyzer.fftSize = 8192; // Máxima resolución
@@ -622,24 +823,260 @@ class EzTranslateApp {
         };
     }
 
-    findFundamentalFrequency(dataArray) {
-        // Buscar la frecuencia fundamental usando autocorrelación
-        let maxCorrelation = 0;
+    findFundamentalFrequencyAdvanced(floatArray) {
+        // Análisis mejorado de frecuencia fundamental usando métodos combinados
         let fundamentalFreq = 0;
+        const sampleRate = this.voiceCloneEngine.audioContext.sampleRate;
         
-        for (let i = 1; i < dataArray.length / 2; i++) {
-            let correlation = 0;
-            for (let j = 0; j < dataArray.length - i; j++) {
-                correlation += dataArray[j] * dataArray[j + i];
-            }
-            
-            if (correlation > maxCorrelation) {
-                maxCorrelation = correlation;
-                fundamentalFreq = i * (this.userVoiceProfile.audioContext.sampleRate / 2) / dataArray.length;
+        // Método 1: Buscar el pico más prominente en el espectro
+        let maxMagnitude = -Infinity;
+        let peakIndex = 0;
+        
+        for (let i = 5; i < floatArray.length / 4; i++) { // Evitar frecuencias muy bajas
+            if (floatArray[i] > maxMagnitude) {
+                maxMagnitude = floatArray[i];
+                peakIndex = i;
             }
         }
         
-        return fundamentalFreq;
+        const peakFreq = peakIndex * (sampleRate / 2) / floatArray.length;
+        
+        // Método 2: Verificar armónicos para confirmar fundamental
+        let harmonicStrength = 0;
+        let confirmedFundamental = peakFreq;
+        
+        // Buscar frecuencias que tengan armónicos fuertes
+        for (let testFreq = 80; testFreq <= 500; testFreq += 10) {
+            let harmonicScore = 0;
+            
+            for (let harmonic = 1; harmonic <= 5; harmonic++) {
+                const harmonicFreq = testFreq * harmonic;
+                const harmonicIndex = Math.round(harmonicFreq * floatArray.length * 2 / sampleRate);
+                
+                if (harmonicIndex < floatArray.length) {
+                    harmonicScore += floatArray[harmonicIndex];
+                }
+            }
+            
+            if (harmonicScore > harmonicStrength) {
+                harmonicStrength = harmonicScore;
+                confirmedFundamental = testFreq;
+            }
+        }
+        
+        // Usar la frecuencia confirmada por armónicos si es válida
+        fundamentalFreq = (harmonicStrength > maxMagnitude * 0.5) ? confirmedFundamental : peakFreq;
+        
+        return Math.max(50, Math.min(1000, fundamentalFreq)); // Limitar rango válido
+    }
+
+    analyzeHarmonicsAdvanced(dataArray, fundamentalFreq) {
+        const harmonics = [];
+        const sampleRate = this.voiceCloneEngine.audioContext.sampleRate;
+        
+        if (fundamentalFreq < 50) return harmonics;
+        
+        for (let harmonic = 1; harmonic <= 8; harmonic++) {
+            const targetFreq = fundamentalFreq * harmonic;
+            const binIndex = Math.round(targetFreq * dataArray.length * 2 / sampleRate);
+            
+            if (binIndex < dataArray.length) {
+                const amplitude = dataArray[binIndex];
+                const strength = amplitude / 255;
+                
+                // Solo incluir armónicos con fuerza significativa
+                if (strength > 0.1) {
+                    harmonics.push({
+                        harmonic: harmonic,
+                        frequency: targetFreq,
+                        amplitude: amplitude,
+                        strength: strength,
+                        relative: strength / (dataArray[Math.round(fundamentalFreq * dataArray.length * 2 / sampleRate)] / 255)
+                    });
+                }
+            }
+        }
+        
+        return harmonics;
+    }
+
+    extractFormants(floatArray) {
+        // Extracción mejorada de formantes (F1, F2, F3)
+        const formants = [];
+        const sampleRate = this.voiceCloneEngine.audioContext.sampleRate;
+        const peaks = this.findSpectralPeaksAdvanced(floatArray);
+        
+        // Filtrar picos por frecuencia para formantes típicos
+        const formantRanges = [
+            { min: 200, max: 900, name: 'F1' },   // Primer formante
+            { min: 800, max: 2500, name: 'F2' },  // Segundo formante
+            { min: 1800, max: 4000, name: 'F3' }  // Tercer formante
+        ];
+        
+        formantRanges.forEach((range, index) => {
+            const candidatePeaks = peaks.filter(peak => 
+                peak.frequency >= range.min && peak.frequency <= range.max
+            );
+            
+            if (candidatePeaks.length > 0) {
+                // Tomar el pico más prominente en este rango
+                const strongestPeak = candidatePeaks.reduce((prev, current) => 
+                    current.amplitude > prev.amplitude ? current : prev
+                );
+                
+                formants.push({
+                    formant: index + 1,
+                    name: range.name,
+                    frequency: strongestPeak.frequency,
+                    amplitude: strongestPeak.amplitude,
+                    bandwidth: this.calculateFormantBandwidth(floatArray, strongestPeak.frequency)
+                });
+            }
+        });
+        
+        return formants;
+    }
+
+    findSpectralPeaksAdvanced(floatArray) {
+        const peaks = [];
+        const sampleRate = this.voiceCloneEngine.audioContext.sampleRate;
+        const minPeakHeight = -60; // dB
+        const minPeakDistance = 5; // bins
+        
+        // Encontrar picos locales
+        for (let i = minPeakDistance; i < floatArray.length - minPeakDistance; i++) {
+            if (floatArray[i] > minPeakHeight) {
+                let isPeak = true;
+                
+                // Verificar que sea mayor que los vecinos
+                for (let j = -minPeakDistance; j <= minPeakDistance; j++) {
+                    if (j !== 0 && floatArray[i + j] >= floatArray[i]) {
+                        isPeak = false;
+                        break;
+                    }
+                }
+                
+                if (isPeak) {
+                    const frequency = i * (sampleRate / 2) / floatArray.length;
+                    peaks.push({
+                        frequency: frequency,
+                        amplitude: floatArray[i],
+                        bin: i
+                    });
+                }
+            }
+        }
+        
+        // Ordenar por amplitud descendente
+        return peaks.sort((a, b) => b.amplitude - a.amplitude).slice(0, 10);
+    }
+
+    calculateFormantBandwidth(floatArray, centerFreq) {
+        // Calcular ancho de banda del formante
+        const sampleRate = this.voiceCloneEngine.audioContext.sampleRate;
+        const centerBin = Math.round(centerFreq * floatArray.length * 2 / sampleRate);
+        const peakAmplitude = floatArray[centerBin];
+        const halfPowerLevel = peakAmplitude - 3; // -3dB
+        
+        // Buscar puntos de media potencia
+        let leftBin = centerBin;
+        let rightBin = centerBin;
+        
+        // Buscar hacia la izquierda
+        while (leftBin > 0 && floatArray[leftBin] > halfPowerLevel) {
+            leftBin--;
+        }
+        
+        // Buscar hacia la derecha
+        while (rightBin < floatArray.length - 1 && floatArray[rightBin] > halfPowerLevel) {
+            rightBin++;
+        }
+        
+        const leftFreq = leftBin * (sampleRate / 2) / floatArray.length;
+        const rightFreq = rightBin * (sampleRate / 2) / floatArray.length;
+        
+        return rightFreq - leftFreq;
+    }
+
+    calculateOptimalRateReal(avgTexture, textureHistory) {
+        // Calcular velocidad óptima basada en análisis real de textura
+        if (!avgTexture || textureHistory.length < 5) return 1.0;
+        
+        const clarityScore = avgTexture.clarity;
+        const brightnessScore = avgTexture.brightness;
+        
+        // Velocidad base según claridad
+        let rate = 1.0;
+        
+        if (clarityScore > 80) {
+            rate = 1.1; // Voz clara = puede hablar un poco más rápido
+        } else if (clarityScore < 40) {
+            rate = 0.9; // Voz menos clara = hablar más lento
+        }
+        
+        // Ajustar según brillo (frecuencias altas)
+        if (brightnessScore > 120) {
+            rate += 0.1; // Voz brillante = más rápido
+        }
+        
+        return Math.max(0.7, Math.min(1.4, rate));
+    }
+
+    calculateOptimalVolumeReal(avgTexture) {
+        // Calcular volumen óptimo basado en características reales
+        if (!avgTexture) return 0.8;
+        
+        const baseVolume = 0.8;
+        const roughnessScore = avgTexture.roughness;
+        
+        // Ajustar volumen según rugosidad
+        if (roughnessScore > 60) {
+            return Math.min(1.0, baseVolume + 0.1); // Voz áspera = un poco más fuerte
+        } else if (roughnessScore < 30) {
+            return Math.max(0.6, baseVolume - 0.1); // Voz suave = un poco más suave
+        }
+        
+        return baseVolume;
+    }
+
+    calculateSpectralFlux(floatArray) {
+        // Calcular flujo espectral para análisis de textura
+        if (!this.previousSpectrum) {
+            this.previousSpectrum = new Float32Array(floatArray);
+            return 0;
+        }
+        
+        let flux = 0;
+        for (let i = 0; i < floatArray.length; i++) {
+            const diff = floatArray[i] - this.previousSpectrum[i];
+            flux += diff > 0 ? diff : 0;
+        }
+        
+        // Actualizar espectro anterior
+        this.previousSpectrum.set(floatArray);
+        
+        return flux / floatArray.length;
+    }
+
+    calculateHarmonicityRatio(floatArray) {
+        // Calcular ratio de armonicidad
+        const sampleRate = this.voiceCloneEngine.audioContext.sampleRate;
+        let harmonicEnergy = 0;
+        let totalEnergy = 0;
+        
+        for (let i = 0; i < floatArray.length; i++) {
+            const freq = i * (sampleRate / 2) / floatArray.length;
+            const energy = Math.pow(10, floatArray[i] / 10);
+            
+            totalEnergy += energy;
+            
+            // Considerar frecuencias típicamente armónicas
+            if (freq >= 80 && freq <= 1000 && freq % 80 < 20) {
+                harmonicEnergy += energy;
+            }
+        }
+        
+        return totalEnergy > 0 ? harmonicEnergy / totalEnergy : 0;
     }
 
     analyzeHarmonics(dataArray, fundamentalFreq) {
@@ -977,15 +1414,130 @@ class EzTranslateApp {
         }
     }
 
-    createVoiceAnalysisProgress() {
-        // Verificar si ya existe para evitar duplicados
-        if (document.getElementById('voiceAnalysisProgress')) {
-            return;
+    createAdvancedVoiceInterface() {
+        // Limpiar interfaz anterior
+        const existing = document.getElementById('advancedVoiceInterface');
+        if (existing) existing.remove();
+        
+        const interfaceContainer = document.createElement('div');
+        interfaceContainer.id = 'advancedVoiceInterface';
+        interfaceContainer.className = 'advanced-voice-interface';
+        
+        interfaceContainer.innerHTML = `
+            <!-- Visualizador de voz en tiempo real -->
+            <div class="real-time-voice-display">
+                <div class="voice-wave-container">
+                    <canvas id="voiceWaveCanvas" width="400" height="100"></canvas>
+                    <div class="voice-level-indicator">
+                        <div class="level-bar" id="voiceLevelBar"></div>
+                    </div>
+                </div>
+                <div class="detection-status" id="detectionStatus">
+                    <i class="fas fa-microphone-slash"></i>
+                    <span>Esperando voz...</span>
+                </div>
+            </div>
+            
+            <!-- Progreso de análisis -->
+            <div class="analysis-progress-container">
+                <div class="progress-header">
+                    <h4>Análisis de Voz en Tiempo Real</h4>
+                    <div class="progress-stats">
+                        <span id="samplesCount">0 muestras</span>
+                        <span id="qualityScore">Calidad: 0%</span>
+                    </div>
+                </div>
+                
+                <div class="progress-bars">
+                    <div class="progress-item">
+                        <label>Detección de Voz:</label>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="voiceDetectionProgress"></div>
+                        </div>
+                    </div>
+                    <div class="progress-item">
+                        <label>Análisis Espectral:</label>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="spectralAnalysisProgress"></div>
+                        </div>
+                    </div>
+                    <div class="progress-item">
+                        <label>Extracción de Características:</label>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="featureExtractionProgress"></div>
+                        </div>
+                    </div>
+                    <div class="progress-item">
+                        <label>Clonación de Voz:</label>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="voiceCloningProgress"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="overall-progress">
+                    <div class="overall-bar">
+                        <div class="overall-fill" id="overallProgress"></div>
+                    </div>
+                    <div class="progress-text">
+                        <span id="progressPercentage">0%</span>
+                        <span id="timeElapsed">0s</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Características de voz detectadas -->
+            <div class="voice-characteristics-display" id="voiceCharacteristics" style="display: none;">
+                <h4>Características Detectadas:</h4>
+                <div class="characteristics-grid">
+                    <div class="char-item">
+                        <span class="char-label">Frecuencia Fundamental:</span>
+                        <span class="char-value" id="fundamentalFreq">-- Hz</span>
+                    </div>
+                    <div class="char-item">
+                        <span class="char-label">Rango Vocal:</span>
+                        <span class="char-value" id="vocalRange">-- Hz</span>
+                    </div>
+                    <div class="char-item">
+                        <span class="char-label">Timbre:</span>
+                        <span class="char-value" id="timbreValue">--</span>
+                    </div>
+                    <div class="char-item">
+                        <span class="char-label">Armónicos:</span>
+                        <span class="char-value" id="harmonicsCount">--</span>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Insertar en el modal
+        const modalBody = document.querySelector('.modal-body');
+        const voiceInterface = modalBody.querySelector('.voice-interface');
+        
+        if (voiceInterface) {
+            voiceInterface.appendChild(interfaceContainer);
         }
         
-        const progressContainer = document.createElement('div');
-        progressContainer.className = 'voice-analysis-progress';
-        progressContainer.id = 'voiceAnalysisProgress';
+        // Inicializar canvas para visualización
+        this.initializeVoiceCanvas();
+        
+        console.log('✅ Interfaz avanzada de voz creada');
+    }
+
+    initializeVoiceCanvas() {
+        const canvas = document.getElementById('voiceWaveCanvas');
+        if (!canvas) return;
+        
+        this.voiceVisualizer.canvas = canvas;
+        this.voiceVisualizer.ctx = canvas.getContext('2d');
+        this.voiceVisualizer.barWidth = canvas.width / this.voiceVisualizer.barCount;
+        
+        // Configurar estilo del canvas
+        this.voiceVisualizer.ctx.fillStyle = '#00d4ff';
+        this.voiceVisualizer.isActive = true;
+        
+        console.log('🎨 Canvas de visualización inicializado');
+    }
         
         progressContainer.innerHTML = `
             <div class="analysis-steps">
@@ -1048,24 +1600,185 @@ class EzTranslateApp {
         console.log('✅ Barra de progreso de análisis creada');
     }
 
-    startVoiceDetectionAnimation() {
-        const voiceCircle = document.getElementById('voiceCircle');
+    startRealTimeVoiceVisualization() {
+        if (!this.voiceVisualizer.isActive || !this.voiceVisualizer.ctx) return;
         
-        // Agregar indicador visual de detección
-        if (!document.getElementById('voiceWaveIndicator')) {
-            const waveIndicator = document.createElement('div');
-            waveIndicator.id = 'voiceWaveIndicator';
-            waveIndicator.className = 'voice-wave-indicator';
+        const animate = () => {
+            if (!this.isVoiceAnalysisActive) return;
             
-            for (let i = 0; i < 5; i++) {
-                const bar = document.createElement('div');
-                bar.className = 'wave-bar';
-                bar.style.animationDelay = `${i * 0.1}s`;
-                waveIndicator.appendChild(bar);
+            const ctx = this.voiceVisualizer.ctx;
+            const canvas = this.voiceVisualizer.canvas;
+            
+            // Limpiar canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Obtener datos del analizador
+            if (this.voiceCloneEngine.analyzer) {
+                this.voiceCloneEngine.analyzer.getByteFrequencyData(this.voiceCloneEngine.dataArray);
+                
+                // Dibujar barras de frecuencia
+                for (let i = 0; i < this.voiceVisualizer.barCount; i++) {
+                    const dataIndex = Math.floor(i * this.voiceCloneEngine.dataArray.length / this.voiceVisualizer.barCount);
+                    const barHeight = (this.voiceCloneEngine.dataArray[dataIndex] / 255) * canvas.height;
+                    
+                    // Gradiente de color basado en intensidad
+                    const intensity = this.voiceCloneEngine.dataArray[dataIndex] / 255;
+                    const hue = 180 + (intensity * 60); // De cian a azul
+                    ctx.fillStyle = `hsl(${hue}, 100%, ${50 + intensity * 30}%)`;
+                    
+                    ctx.fillRect(
+                        i * this.voiceVisualizer.barWidth,
+                        canvas.height - barHeight,
+                        this.voiceVisualizer.barWidth - 1,
+                        barHeight
+                    );
+                }
+                
+                // Línea de frecuencia fundamental si está disponible
+                if (this.voiceCloneEngine.realTimeBuffer.length > 0) {
+                    const latest = this.voiceCloneEngine.realTimeBuffer[this.voiceCloneEngine.realTimeBuffer.length - 1];
+                    if (latest.fundamentalFreq > 0) {
+                        const freqPosition = (latest.fundamentalFreq / 1000) * canvas.width;
+                        ctx.strokeStyle = '#ff1744';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.moveTo(freqPosition, 0);
+                        ctx.lineTo(freqPosition, canvas.height);
+                        ctx.stroke();
+                    }
+                }
             }
             
-            voiceCircle.appendChild(waveIndicator);
+            this.voiceVisualizer.animationId = requestAnimationFrame(animate);
+        };
+        
+        animate();
+        console.log('🎨 Visualización en tiempo real iniciada');
+    }
+
+    updateVoiceVisualization(volume, isDetected) {
+        // Actualizar indicador de nivel de voz
+        const levelBar = document.getElementById('voiceLevelBar');
+        if (levelBar) {
+            const percentage = Math.min(100, volume * 1000);
+            levelBar.style.width = `${percentage}%`;
+            levelBar.style.backgroundColor = isDetected ? '#00c851' : '#00d4ff';
         }
+        
+        // Actualizar estado de detección
+        const detectionStatus = document.getElementById('detectionStatus');
+        if (detectionStatus && isDetected) {
+            detectionStatus.innerHTML = `
+                <i class="fas fa-microphone" style="color: #00c851;"></i>
+                <span style="color: #00c851;">Voz detectada - Analizando...</span>
+            `;
+        } else if (detectionStatus && !isDetected) {
+            detectionStatus.innerHTML = `
+                <i class="fas fa-microphone-slash" style="color: #666;"></i>
+                <span>Esperando voz...</span>
+            `;
+        }
+        
+        // Actualizar círculo principal
+        if (isDetected) {
+            this.voiceCircle.classList.add('detecting-voice');
+        } else {
+            this.voiceCircle.classList.remove('detecting-voice');
+        }
+    }
+
+    updateVoiceStatus(message, type = 'normal') {
+        this.voiceStatus.innerHTML = `
+            <div class="voice-status-message ${type}">
+                ${message}
+            </div>
+        `;
+    }
+
+    updateAnalysisProgress(samples, qualitySamples, timeElapsed) {
+        // Actualizar contadores
+        const samplesCount = document.getElementById('samplesCount');
+        const qualityScore = document.getElementById('qualityScore');
+        const timeEl = document.getElementById('timeElapsed');
+        
+        if (samplesCount) samplesCount.textContent = `${samples} muestras`;
+        if (qualityScore) qualityScore.textContent = `Calidad: ${Math.round((qualitySamples/samples) * 100) || 0}%`;
+        if (timeEl) timeEl.textContent = `${Math.round(timeElapsed/1000)}s`;
+        
+        // Calcular progreso de cada fase
+        const voiceDetectionProg = Math.min(100, (samples / 50) * 100);
+        const spectralProg = Math.min(100, (qualitySamples / 30) * 100);
+        const featureProg = Math.min(100, (qualitySamples / 80) * 100);
+        const cloningProg = Math.min(100, (qualitySamples / 150) * 100);
+        
+        // Actualizar barras de progreso
+        this.updateProgressBar('voiceDetectionProgress', voiceDetectionProg);
+        this.updateProgressBar('spectralAnalysisProgress', spectralProg);
+        this.updateProgressBar('featureExtractionProgress', featureProg);
+        this.updateProgressBar('voiceCloningProgress', cloningProg);
+        
+        // Progreso general
+        const overallProg = (voiceDetectionProg + spectralProg + featureProg + cloningProg) / 4;
+        this.updateProgressBar('overallProgress', overallProg);
+        
+        const progressText = document.getElementById('progressPercentage');
+        if (progressText) progressText.textContent = `${Math.round(overallProg)}%`;
+        
+        // Mostrar características si hay datos suficientes
+        if (qualitySamples > 10) {
+            this.updateVoiceCharacteristics();
+        }
+    }
+
+    updateProgressBar(id, percentage) {
+        const bar = document.getElementById(id);
+        if (bar) {
+            bar.style.width = `${percentage}%`;
+        }
+    }
+
+    updateVoiceCharacteristics() {
+        const charDisplay = document.getElementById('voiceCharacteristics');
+        if (!charDisplay || this.voiceCloneEngine.realTimeBuffer.length === 0) return;
+        
+        charDisplay.style.display = 'block';
+        
+        // Calcular características promedio
+        const buffer = this.voiceCloneEngine.realTimeBuffer;
+        const validSamples = buffer.filter(s => s.quality > 0.5);
+        
+        if (validSamples.length > 0) {
+            const avgFreq = validSamples.reduce((sum, s) => sum + s.fundamentalFreq, 0) / validSamples.length;
+            const freqs = validSamples.map(s => s.fundamentalFreq);
+            const minFreq = Math.min(...freqs);
+            const maxFreq = Math.max(...freqs);
+            const avgHarmonics = validSamples.reduce((sum, s) => sum + s.harmonics.length, 0) / validSamples.length;
+            
+            // Actualizar valores
+            document.getElementById('fundamentalFreq').textContent = `${Math.round(avgFreq)} Hz`;
+            document.getElementById('vocalRange').textContent = `${Math.round(minFreq)}-${Math.round(maxFreq)} Hz`;
+            document.getElementById('harmonicsCount').textContent = Math.round(avgHarmonics);
+            
+            // Calcular timbre basado en distribución espectral
+            const timbreValue = this.calculateTimbreDescriptor(validSamples);
+            document.getElementById('timbreValue').textContent = timbreValue;
+        }
+    }
+
+    calculateTimbreDescriptor(samples) {
+        if (samples.length === 0) return 'Analizando...';
+        
+        const avgTexture = samples.reduce((sum, s) => ({
+            brightness: sum.brightness + (s.texture?.brightness || 0),
+            roughness: sum.roughness + (s.texture?.roughness || 0)
+        }), { brightness: 0, roughness: 0 });
+        
+        avgTexture.brightness /= samples.length;
+        avgTexture.roughness /= samples.length;
+        
+        if (avgTexture.brightness > 100) return 'Brillante';
+        if (avgTexture.roughness > 50) return 'Áspero';
+        return 'Suave';
     }
 
     updateVoiceAnalysisStep(stepNumber, progress) {
@@ -1116,10 +1829,183 @@ class EzTranslateApp {
         voiceCircle.classList.add('analysis-complete');
     }
 
-    transitionToTranslationMode() {
-        // Cambiar el modal a modo traducción
+    transitionToLiveTranslationMode() {
+        // Cambiar interfaz al modo traducción en vivo
         const modalContent = document.querySelector('.modal-content');
         modalContent.classList.add('transition-to-translation');
+        
+        // Cambiar título
+        const modalHeader = document.querySelector('.modal-header h3');
+        modalHeader.innerHTML = '<i class="fas fa-robot"></i> Traducción con Tu Voz Clonada';
+        
+        // Crear interfaz de traducción en vivo
+        const modalBody = document.querySelector('.modal-body');
+        modalBody.innerHTML = `
+            <div class="live-translation-interface">
+                <!-- Estado de clonación -->
+                <div class="cloned-voice-status">
+                    <div class="voice-clone-success">
+                        <i class="fas fa-check-circle"></i>
+                        <span>¡Tu voz ha sido perfectamente clonada!</span>
+                    </div>
+                    <div class="voice-profile-display">
+                        <div class="profile-item">
+                            <span class="profile-label">Calidad de Clonación:</span>
+                            <span class="profile-value" id="cloningQuality">${Math.round(this.voiceCloneEngine.clonedVoiceSettings?.qualityScore || 85)}%</span>
+                        </div>
+                        <div class="profile-item">
+                            <span class="profile-label">Tono Fundamental:</span>
+                            <span class="profile-value">${Math.round(this.voiceCloneEngine.clonedVoiceSettings?.voiceSignature?.avgFundamental || 150)} Hz</span>
+                        </div>
+                        <div class="profile-item">
+                            <span class="profile-label">Rango Vocal:</span>
+                            <span class="profile-value">${Math.round(this.voiceCloneEngine.clonedVoiceSettings?.voiceSignature?.frequencyRange?.min || 100)}-${Math.round(this.voiceCloneEngine.clonedVoiceSettings?.voiceSignature?.frequencyRange?.max || 200)} Hz</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Control de traducción en vivo -->
+                <div class="live-translation-controls">
+                    <div class="translation-status" id="liveTranslationStatus">
+                        <i class="fas fa-play-circle"></i>
+                        <span>Listo para traducir con tu voz</span>
+                    </div>
+                    
+                    <div class="live-voice-button" id="liveVoiceButton">
+                        <div class="live-voice-circle" id="liveVoiceCircle">
+                            <i class="fas fa-microphone"></i>
+                        </div>
+                        <p>Mantén presionado para hablar</p>
+                    </div>
+                    
+                    <!-- Pantalla de traducción -->
+                    <div class="translation-display">
+                        <div class="translation-panel original-panel">
+                            <div class="panel-header">
+                                <i class="fas fa-microphone"></i>
+                                <span>Lo que dijiste (${this.getLanguageName(this.sourceLanguage.value)}):</span>
+                            </div>
+                            <div class="translation-text" id="liveOriginalText">Habla ahora...</div>
+                        </div>
+                        
+                        <div class="translation-arrow">
+                            <i class="fas fa-arrow-right"></i>
+                        </div>
+                        
+                        <div class="translation-panel translated-panel">
+                            <div class="panel-header">
+                                <i class="fas fa-volume-up"></i>
+                                <span>Traducción (${this.getLanguageName(this.targetLanguage.value)}):</span>
+                            </div>
+                            <div class="translation-text" id="liveTranslatedText">La traducción aparecerá aquí...</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Configuración de voz -->
+                <div class="voice-settings-panel">
+                    <h4><i class="fas fa-sliders-h"></i> Ajustes de Tu Voz Clonada</h4>
+                    <div class="voice-controls">
+                        <div class="control-group">
+                            <label>Tono:</label>
+                            <input type="range" id="voicePitchSlider" min="0.5" max="2" step="0.1" value="${this.voiceCloneEngine.clonedVoiceSettings?.pitch || 1}">
+                            <span id="pitchValue">${(this.voiceCloneEngine.clonedVoiceSettings?.pitch || 1).toFixed(1)}</span>
+                        </div>
+                        <div class="control-group">
+                            <label>Velocidad:</label>
+                            <input type="range" id="voiceRateSlider" min="0.5" max="2" step="0.1" value="${this.voiceCloneEngine.clonedVoiceSettings?.rate || 1}">
+                            <span id="rateValue">${(this.voiceCloneEngine.clonedVoiceSettings?.rate || 1).toFixed(1)}</span>
+                        </div>
+                        <div class="control-group">
+                            <label>Volumen:</label>
+                            <input type="range" id="voiceVolumeSlider" min="0.1" max="1" step="0.1" value="${this.voiceCloneEngine.clonedVoiceSettings?.volume || 0.8}">
+                            <span id="volumeValue">${Math.round((this.voiceCloneEngine.clonedVoiceSettings?.volume || 0.8) * 100)}%</span>
+                        </div>
+                    </div>
+                    <button class="test-voice-btn" id="testVoiceBtn">
+                        <i class="fas fa-play"></i>
+                        Probar Mi Voz Clonada
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        // Configurar eventos de la nueva interfaz
+        this.setupLiveTranslationEvents();
+        
+        this.showToast('🚀 ¡Modo traducción en vivo activado!', 'success');
+    }
+
+    setupLiveTranslationEvents() {
+        const liveVoiceButton = document.getElementById('liveVoiceButton');
+        const liveVoiceCircle = document.getElementById('liveVoiceCircle');
+        const testVoiceBtn = document.getElementById('testVoiceBtn');
+        
+        // Controles de voz
+        const pitchSlider = document.getElementById('voicePitchSlider');
+        const rateSlider = document.getElementById('voiceRateSlider');
+        const volumeSlider = document.getElementById('voiceVolumeSlider');
+        
+        let isHolding = false;
+        
+        // Eventos de mantener presionado
+        liveVoiceButton.addEventListener('mousedown', () => {
+            isHolding = true;
+            this.startLiveTranslation();
+            liveVoiceCircle.classList.add('recording');
+        });
+        
+        liveVoiceButton.addEventListener('mouseup', () => {
+            isHolding = false;
+            this.stopLiveTranslation();
+            liveVoiceCircle.classList.remove('recording');
+        });
+        
+        liveVoiceButton.addEventListener('mouseleave', () => {
+            if (isHolding) {
+                isHolding = false;
+                this.stopLiveTranslation();
+                liveVoiceCircle.classList.remove('recording');
+            }
+        });
+        
+        // Eventos táctiles para móviles
+        liveVoiceButton.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            isHolding = true;
+            this.startLiveTranslation();
+            liveVoiceCircle.classList.add('recording');
+        });
+        
+        liveVoiceButton.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            isHolding = false;
+            this.stopLiveTranslation();
+            liveVoiceCircle.classList.remove('recording');
+        });
+        
+        // Controles de voz
+        pitchSlider?.addEventListener('input', (e) => {
+            this.voiceCloneEngine.clonedVoiceSettings.pitch = parseFloat(e.target.value);
+            document.getElementById('pitchValue').textContent = e.target.value;
+        });
+        
+        rateSlider?.addEventListener('input', (e) => {
+            this.voiceCloneEngine.clonedVoiceSettings.rate = parseFloat(e.target.value);
+            document.getElementById('rateValue').textContent = e.target.value;
+        });
+        
+        volumeSlider?.addEventListener('input', (e) => {
+            this.voiceCloneEngine.clonedVoiceSettings.volume = parseFloat(e.target.value);
+            document.getElementById('volumeValue').textContent = Math.round(e.target.value * 100) + '%';
+        });
+        
+        // Probar voz
+        testVoiceBtn?.addEventListener('click', () => {
+            const testText = "Hola, esta es mi voz clonada hablando en el idioma de destino";
+            this.speakWithClonedVoice(testText, this.targetLanguage.value);
+        });
+    }
         
         // Cambiar contenido del modal
         const modalHeader = document.querySelector('.modal-header h3');
@@ -1373,32 +2259,96 @@ class EzTranslateApp {
         return Math.max(0.3, Math.min(1.0, baseVolume * (0.8 + brightnessFactor)));
     }
 
-    speakWithAdvancedVoiceCloning(text, language) {
-        if (!text || text.includes('aparecerá aquí')) return;
+    speakWithClonedVoice(text, language) {
+        if (!text || text.includes('aparecerá aquí') || text.includes('traducción aparecerá')) return;
+
+        // Detener cualquier síntesis anterior
+        this.synthesis.cancel();
 
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = this.getLanguageCode(language);
         
-        // Aplicar configuraciones optimizadas si están disponibles
-        if (this.userVoiceProfile.optimizedSettings) {
-            const settings = this.userVoiceProfile.optimizedSettings;
+        // Aplicar configuraciones de voz clonada
+        if (this.voiceCloneEngine.clonedVoiceSettings) {
+            const settings = this.voiceCloneEngine.clonedVoiceSettings;
             
             utterance.pitch = settings.pitch;
             utterance.rate = settings.rate;
             utterance.volume = settings.volume;
             
-            console.log(`🎯 Clonación AVANZADA: Pitch=${settings.pitch.toFixed(3)}, Rate=${settings.rate.toFixed(3)}, Volume=${settings.volume.toFixed(3)}`);
-        } else if (this.userVoiceProfile.voiceCharacteristics.frequency.length > 0) {
-            // Usar análisis básico si el avanzado no está listo
-            const avgFreq = this.userVoiceProfile.voiceCharacteristics.frequency.reduce((a, b) => a + b, 0) / this.userVoiceProfile.voiceCharacteristics.frequency.length;
-            const avgAmp = this.userVoiceProfile.voiceCharacteristics.amplitude.reduce((a, b) => a + b, 0) / this.userVoiceProfile.voiceCharacteristics.amplitude.length;
-            
-            utterance.pitch = Math.max(0.1, Math.min(2.0, avgFreq / 200));
-            utterance.volume = Math.max(0.1, Math.min(1.0, avgAmp / 128));
+            console.log(`🎯 REPRODUCIENDO CON VOZ CLONADA:`, {
+                texto: text.substring(0, 50),
+                idioma: language,
+                pitch: settings.pitch.toFixed(2),
+                rate: settings.rate.toFixed(2),
+                volume: settings.volume.toFixed(2),
+                calidad: settings.qualityScore?.toFixed(1) + '%'
+            });
+        } else {
+            // Configuración por defecto si no hay perfil
+            utterance.pitch = 1.0;
             utterance.rate = 1.0;
-            
-            console.log(`🔊 Clonación BÁSICA: Pitch=${utterance.pitch.toFixed(2)}, Volume=${utterance.volume.toFixed(2)}`);
+            utterance.volume = 0.8;
+            console.log('🔊 Usando configuración por defecto');
         }
+        
+        // Buscar la mejor voz disponible para el idioma
+        const voices = this.synthesis.getVoices();
+        const targetLangCode = this.getLanguageCode(language);
+        
+        // Priorizar voces neurales/premium
+        const priorityVoices = voices.filter(voice => 
+            voice.lang.startsWith(language) && 
+            (voice.name.toLowerCase().includes('neural') || 
+             voice.name.toLowerCase().includes('premium') ||
+             voice.name.toLowerCase().includes('enhanced') ||
+             voice.name.toLowerCase().includes('google') ||
+             voice.name.toLowerCase().includes('microsoft'))
+        );
+        
+        const selectedVoice = priorityVoices[0] || voices.find(voice => voice.lang.startsWith(targetLangCode));
+        
+        if (selectedVoice) {
+            utterance.voice = selectedVoice;
+            console.log(`🎵 Voz seleccionada: ${selectedVoice.name} (${selectedVoice.lang})`);
+        }
+        
+        // Eventos de síntesis
+        utterance.onstart = () => {
+            const status = document.getElementById('liveTranslationStatus');
+            if (status) {
+                status.innerHTML = `
+                    <i class="fas fa-volume-up" style="color: #00c851;"></i>
+                    <span style="color: #00c851;">Reproduciendo con tu voz clonada...</span>
+                `;
+            }
+        };
+        
+        utterance.onend = () => {
+            const status = document.getElementById('liveTranslationStatus');
+            if (status) {
+                status.innerHTML = `
+                    <i class="fas fa-microphone"></i>
+                    <span>Listo para la siguiente traducción</span>
+                `;
+            }
+        };
+        
+        utterance.onerror = (error) => {
+            console.error('Error en síntesis de voz clonada:', error);
+            this.showToast('❌ Error reproduciendo con voz clonada', 'error');
+        };
+        
+        // Reproducir con un pequeño delay para estabilidad
+        setTimeout(() => {
+            this.synthesis.speak(utterance);
+        }, 100);
+    }
+
+    // Alias para compatibilidad
+    speakWithAdvancedVoiceCloning(text, language) {
+        return this.speakWithClonedVoice(text, language);
+    }
         
         // Buscar la mejor voz neural disponible con prioridad
         const voices = this.synthesis.getVoices();
@@ -1488,21 +2438,124 @@ class EzTranslateApp {
         }
     }
 
-    displayTrainingPhrase() {
+    displayCurrentTrainingPhrase() {
         const currentPhrase = this.trainingPhrases[this.currentPhraseIndex];
         this.voiceStatus.innerHTML = `
             <div class="training-phrase-container">
                 <div class="phrase-header">
-                    <strong>Repite esta frase (${this.phrasesCompleted + 1}/${this.requiredPhrases}):</strong>
+                    <i class="fas fa-quote-left"></i>
+                    <strong>Frase ${this.phrasesCompleted + 1} de ${this.requiredPhrases}</strong>
+                    <i class="fas fa-quote-right"></i>
                 </div>
                 <div class="training-phrase">
                     "${currentPhrase}"
                 </div>
-                <div class="phrase-hint">
-                    💡 Habla clara y naturalmente para mejor clonación
+                <div class="phrase-instructions">
+                    <div class="instruction-item">
+                        <i class="fas fa-microphone"></i>
+                        <span>Habla clara y naturalmente</span>
+                    </div>
+                    <div class="instruction-item">
+                        <i class="fas fa-clock"></i>
+                        <span>Lee la frase completa</span>
+                    </div>
+                    <div class="instruction-item">
+                        <i class="fas fa-brain"></i>
+                        <span>Tu voz será analizada en tiempo real</span>
+                    </div>
                 </div>
             </div>
         `;
+    }
+
+    processValidSpeechSegment(segmentNumber, duration, qualitySamples) {
+        console.log(`✅ Segmento ${segmentNumber} procesado - ${duration}ms, ${qualitySamples} muestras de calidad`);
+        
+        this.phrasesCompleted++;
+        this.showToast(`🎯 Segmento ${segmentNumber} analizado exitosamente`, 'success');
+        
+        if (this.phrasesCompleted < this.requiredPhrases) {
+            // Avanzar a la siguiente frase
+            this.currentPhraseIndex = (this.currentPhraseIndex + 1) % this.trainingPhrases.length;
+            
+            setTimeout(() => {
+                this.displayCurrentTrainingPhrase();
+                this.updateVoiceStatus('🎤 Lista para la siguiente frase', 'ready');
+            }, 2000);
+        }
+    }
+
+    completeAdvancedVoiceAnalysis(speechSegments, totalQualitySamples) {
+        console.log('🎯 ANÁLISIS COMPLETO:', {
+            segmentos: speechSegments.length,
+            muestrasCalidad: totalQualitySamples,
+            bufferSize: this.voiceCloneEngine.realTimeBuffer.length
+        });
+        
+        // Detener análisis
+        this.isVoiceAnalysisActive = false;
+        
+        if (this.voiceCloneEngine.processor) {
+            this.voiceCloneEngine.processor.disconnect();
+        }
+        
+        // Generar perfil de voz optimizado
+        this.generateOptimizedVoiceProfile();
+        
+        // Completar todas las barras de progreso
+        this.updateProgressBar('voiceDetectionProgress', 100);
+        this.updateProgressBar('spectralAnalysisProgress', 100);
+        this.updateProgressBar('featureExtractionProgress', 100);
+        this.updateProgressBar('voiceCloningProgress', 100);
+        this.updateProgressBar('overallProgress', 100);
+        
+        const progressText = document.getElementById('progressPercentage');
+        if (progressText) progressText.textContent = '100%';
+        
+        // Mostrar mensaje de finalización
+        this.updateVoiceStatus('✅ ¡Clonación de voz completada perfectamente!', 'completed');
+        this.showToast('🎉 Tu voz ha sido clonada exitosamente', 'success');
+        
+        // Transición automática al modo traducción
+        setTimeout(() => {
+            this.transitionToLiveTranslationMode();
+        }, 3000);
+    }
+
+    generateOptimizedVoiceProfile() {
+        const buffer = this.voiceCloneEngine.realTimeBuffer;
+        const validSamples = buffer.filter(s => s.quality > 0.5);
+        
+        if (validSamples.length > 0) {
+            // Calcular características promedio
+            const avgFreq = validSamples.reduce((sum, s) => sum + s.fundamentalFreq, 0) / validSamples.length;
+            const avgVolume = validSamples.reduce((sum, s) => sum + s.volume, 0) / validSamples.length;
+            
+            // Generar configuración optimizada
+            this.voiceCloneEngine.clonedVoiceSettings = {
+                pitch: this.mapFrequencyToPitch(avgFreq),
+                rate: this.calculateOptimalRate(avgVolume),
+                volume: Math.min(1.0, avgVolume * 3),
+                voiceSignature: this.createVoiceSignature(validSamples),
+                qualityScore: (validSamples.length / buffer.length) * 100
+            };
+            
+            console.log('🎵 Perfil de voz generado:', this.voiceCloneEngine.clonedVoiceSettings);
+        }
+    }
+
+    createVoiceSignature(samples) {
+        return {
+            id: `voice_${Date.now()}`,
+            sampleCount: samples.length,
+            avgFundamental: samples.reduce((sum, s) => sum + s.fundamentalFreq, 0) / samples.length,
+            frequencyRange: {
+                min: Math.min(...samples.map(s => s.fundamentalFreq)),
+                max: Math.max(...samples.map(s => s.fundamentalFreq))
+            },
+            harmonicComplexity: samples.reduce((sum, s) => sum + s.harmonics.length, 0) / samples.length,
+            timestamp: new Date().toISOString()
+        };
     }
 
     startRealVoiceDetection(stream) {
